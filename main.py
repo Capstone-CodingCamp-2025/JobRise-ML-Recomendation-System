@@ -370,7 +370,7 @@ def recommend_jobs(user_id: int, top_k: int = 5):
         score = similarities[idx]
 
         recommendations.append({
-            "job_id": int(job_row["id"]),
+            "id": int(job_row["id"]),
             "title": job_row["title"],
             "company_name": job_row["company_name"],
             "company_logo": job_row["company_logo"],
