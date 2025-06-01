@@ -266,6 +266,15 @@ def get_jobs():
 # Endpoint GET /predict
 @app.get("/predict")
 def recommend_jobs(user_id: int, top_k: int = 5):
+    
+    SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+
+    headers = {
+        "apikey": SUPABASE_API_KEY,
+        "Authorization": f"Bearer {SUPABASE_API_KEY}"
+    }
+
     # Ambil profileId & full_name dari profiles
     url_profile = f"{SUPABASE_URL}/rest/v1/profiles?user_id=eq.{user_id}&select=id,full_name"
 
