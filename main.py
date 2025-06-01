@@ -266,51 +266,65 @@ def get_jobs():
 # Endpoint GET /predict
 @app.get("/predict")
 def recommend_jobs(user_id: int, top_k: int = 5):
-    SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    # Ambil profileId & full_name dari profiles
+    url_profile = f"{SUPABASE_URL}/rest/v1/profiles?user_id=eq.{user_id}&select=id,full_name"
 
-    headers = {
-        "apikey": SUPABASE_API_KEY,
-        "Authorization": f"Bearer {SUPABASE_API_KEY}"
-    }
+    response_profile = requests.get(url_profile, headers=headers, timeout=5)
 
-    # Ambil skills user
-    url_skills = f"{SUPABASE_URL}/rest/v1/skills?profileId=eq.{user_id}&select=name"
-
-    try:
-        response_skills = requests.get(url_skills, headers=headers, timeout=5)
-
-        if response_skills.status_code != 200:
-            return {
-                "user_id": user_id,
-                "user_skills": [],
-                "message": f"Failed to fetch skills from Supabase. Status: {response_skills.status_code}, Error: {response_skills.text}"
-            }
-
-        df_user_skills = pd.DataFrame(response_skills.json())
-        user_skills = df_user_skills['name'].tolist() if not df_user_skills.empty else []
-
-    except Exception as e:
+    if response_profile.status_code != 200:
         return {
             "user_id": user_id,
+            "full_name": "",
             "user_skills": [],
-            "message": f"Exception during Supabase API call (skills): {str(e)}"
+            "message": f"Failed to fetch profileId. Status: {response_profile.status_code}, Error: {response_profile.text}"
         }
+
+    df_profile = pd.DataFrame(response_profile.json())
+
+    if df_profile.empty:
+        return {
+            "user_id": user_id,
+            "full_name": "",
+            "user_skills": [],
+            "message": f"User_id {user_id} tidak punya profile."
+        }
+
+    # Ambil profileId & full_name
+    profile_id = df_profile.iloc[0]['id']
+    full_name = df_profile.iloc[0]['full_name']
+
+    # Ambil skills berdasarkan profileId
+    url_skills = f"{SUPABASE_URL}/rest/v1/skills?profileId=eq.{profile_id}&select=name"
+
+    response_skills = requests.get(url_skills, headers=headers, timeout=5)
+
+    if response_skills.status_code != 200:
+        return {
+            "user_id": user_id,
+            "full_name": full_name,
+            "user_skills": [],
+            "message": f"Failed to fetch skills. Status: {response_skills.status_code}, Error: {response_skills.text}"
+        }
+
+    df_user_skills = pd.DataFrame(response_skills.json())
+    user_skills = df_user_skills['name'].tolist() if not df_user_skills.empty else []
 
     # Cek kalau user gak punya skill
     if not user_skills:
         return {
             "user_id": user_id,
+            "full_name": full_name,
             "user_skills": [],
             "message": "User tidak punya skill di database."
         }
 
-    # Embed skill
+    # Embed user skill
     user_vec = embed_text(user_skills)
 
     if not user_vec.any():
         return {
             "user_id": user_id,
+            "full_name": full_name,
             "user_skills": user_skills,
             "message": "Skill user tidak cocok dengan model."
         }
@@ -319,29 +333,20 @@ def recommend_jobs(user_id: int, top_k: int = 5):
     similarities = cosine_sim(user_vec, job_vectors)
     top_k_idx = similarities.argsort()[::-1][:top_k]
 
-    # Ambil jobs (via REST API)
+    # Ambil detail job dari table (hanya active)
     url_jobs = f"{SUPABASE_URL}/rest/v1/jobs?is_active=eq.active&select=id,title,company_name,company_logo,salary_min,salary_max,job_type,is_active"
 
-    try:
-        response_jobs = requests.get(url_jobs, headers=headers, timeout=5)
+    response_jobs = requests.get(url_jobs, headers=headers, timeout=5)
 
-        if response_jobs.status_code != 200:
-            return {
-                "user_id": user_id,
-                "user_skills": user_skills,
-                "recommendations": [],
-                "message": f"Failed to fetch jobs from Supabase. Status: {response_jobs.status_code}, Error: {response_jobs.text}"
-            }
-
-        df_jobs = pd.DataFrame(response_jobs.json())
-
-    except Exception as e:
+    if response_jobs.status_code != 200:
         return {
             "user_id": user_id,
+            "full_name": full_name,
             "user_skills": user_skills,
-            "recommendations": [],
-            "message": f"Exception during Supabase API call (jobs): {str(e)}"
+            "message": f"Failed to fetch jobs. Status: {response_jobs.status_code}, Error: {response_jobs.text}"
         }
+
+    df_jobs = pd.DataFrame(response_jobs.json())
 
     # Build recommendations
     recommendations = []
@@ -350,7 +355,7 @@ def recommend_jobs(user_id: int, top_k: int = 5):
         job_row = df_jobs[df_jobs['id'] == job_id]
 
         if job_row.empty:
-            continue
+            continue  # Skip kalo job_id ga ada (misal job deactive)
 
         job_row = job_row.iloc[0]
         score = similarities[idx]
@@ -367,9 +372,122 @@ def recommend_jobs(user_id: int, top_k: int = 5):
             "score": round(float(score), 3)
         })
 
+    # Return JSON
     return {
         "user_id": user_id,
+        "full_name": full_name,
         "user_skills": user_skills,
         "top_k": top_k,
-        "recommendations": recommendations
+        "recommendations": recommendations,
+        "note": "Only jobs with is_active = 'active' are recommended. Skills always fetched realtime from Supabase."
     }
+
+# @app.get("/predict")
+# def recommend_jobs(user_id: int, top_k: int = 5):
+#     SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+#     SUPABASE_URL = os.getenv("SUPABASE_URL")
+
+#     headers = {
+#         "apikey": SUPABASE_API_KEY,
+#         "Authorization": f"Bearer {SUPABASE_API_KEY}"
+#     }
+
+#     # Ambil skills user
+#     url_skills = f"{SUPABASE_URL}/rest/v1/skills?profileId=eq.{user_id}&select=name"
+
+#     try:
+#         response_skills = requests.get(url_skills, headers=headers, timeout=5)
+
+#         if response_skills.status_code != 200:
+#             return {
+#                 "user_id": user_id,
+#                 "user_skills": [],
+#                 "message": f"Failed to fetch skills from Supabase. Status: {response_skills.status_code}, Error: {response_skills.text}"
+#             }
+
+#         df_user_skills = pd.DataFrame(response_skills.json())
+#         user_skills = df_user_skills['name'].tolist() if not df_user_skills.empty else []
+
+#     except Exception as e:
+#         return {
+#             "user_id": user_id,
+#             "user_skills": [],
+#             "message": f"Exception during Supabase API call (skills): {str(e)}"
+#         }
+
+#     # Cek kalau user gak punya skill
+#     if not user_skills:
+#         return {
+#             "user_id": user_id,
+#             "user_skills": [],
+#             "message": "User tidak punya skill di database."
+#         }
+
+#     # Embed skill
+#     user_vec = embed_text(user_skills)
+
+#     if not user_vec.any():
+#         return {
+#             "user_id": user_id,
+#             "user_skills": user_skills,
+#             "message": "Skill user tidak cocok dengan model."
+#         }
+
+#     # Hitung similarity
+#     similarities = cosine_sim(user_vec, job_vectors)
+#     top_k_idx = similarities.argsort()[::-1][:top_k]
+
+#     # Ambil jobs (via REST API)
+#     url_jobs = f"{SUPABASE_URL}/rest/v1/jobs?is_active=eq.active&select=id,title,company_name,company_logo,salary_min,salary_max,job_type,is_active"
+
+#     try:
+#         response_jobs = requests.get(url_jobs, headers=headers, timeout=5)
+
+#         if response_jobs.status_code != 200:
+#             return {
+#                 "user_id": user_id,
+#                 "user_skills": user_skills,
+#                 "recommendations": [],
+#                 "message": f"Failed to fetch jobs from Supabase. Status: {response_jobs.status_code}, Error: {response_jobs.text}"
+#             }
+
+#         df_jobs = pd.DataFrame(response_jobs.json())
+
+#     except Exception as e:
+#         return {
+#             "user_id": user_id,
+#             "user_skills": user_skills,
+#             "recommendations": [],
+#             "message": f"Exception during Supabase API call (jobs): {str(e)}"
+#         }
+
+#     # Build recommendations
+#     recommendations = []
+#     for idx in top_k_idx:
+#         job_id = job_ids[idx]
+#         job_row = df_jobs[df_jobs['id'] == job_id]
+
+#         if job_row.empty:
+#             continue
+
+#         job_row = job_row.iloc[0]
+#         score = similarities[idx]
+
+#         recommendations.append({
+#             "job_id": int(job_row["id"]),
+#             "title": job_row["title"],
+#             "company_name": job_row["company_name"],
+#             "company_logo": job_row["company_logo"],
+#             "salary_min": job_row["salary_min"],
+#             "salary_max": job_row["salary_max"],
+#             "job_type": job_row["job_type"],
+#             "is_active": job_row["is_active"],
+#             "score": round(float(score), 3)
+#         })
+
+#     return {
+#         "user_id": user_id,
+#         "user_skills": user_skills,
+#         "top_k": top_k,
+#         "recommendations": recommendations
+#     }
