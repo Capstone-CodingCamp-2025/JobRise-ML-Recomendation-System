@@ -265,7 +265,7 @@ def get_jobs():
 
 # Endpoint GET /predict
 @app.get("/predict")
-def recommend_jobs(user_id: int, top_k: int = 5):
+def recommend_jobs(user_id: int, top_k: int = 12):
     
     SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
     SUPABASE_URL = os.getenv("SUPABASE_URL")
