@@ -91,6 +91,15 @@ def recommend_jobs(user_id: int, top_k: int = 5):
     # user_skills = df_user_skills['name'].tolist()
 
     # Example REST API URL → table skills
+    
+    SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+
+    headers = {
+        "apikey": SUPABASE_API_KEY,
+        "Authorization": f"Bearer {SUPABASE_API_KEY}"
+    }
+    
     url = f"{SUPABASE_URL}/rest/v1/skills?profileId=eq.{user_id}&select=name"
 
     response = requests.get(url, headers=headers)
