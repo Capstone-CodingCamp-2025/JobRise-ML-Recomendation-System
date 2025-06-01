@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from gensim.models import Word2Vec
 import os
