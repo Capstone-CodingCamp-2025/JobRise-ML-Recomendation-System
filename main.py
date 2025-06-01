@@ -50,14 +50,27 @@ def read_root():
 # API buat GET jobs
 @app.get("/jobs")
 def get_jobs():
-    df_jobs = pd.read_sql("""
-        SELECT id, title, description, skills
-        FROM jobs
-        WHERE is_active = 'active'
-    """, con=engine)
+    url = f"{SUPABASE_URL}/rest/v1/jobs?is_active=eq.active&select=id,title,description,skills"
+    response = requests.get(url, headers=headers, timeout=5)
+
+    if response.status_code != 200:
+        return {
+            "jobs": [],
+            "message": f"Failed to fetch jobs from Supabase. Status: {response.status_code}, Error: {response.text}"
+        }
+
+    df_jobs = pd.DataFrame(response.json())
     return df_jobs.to_dict(orient="records")
 
-@app.get("/predict")
+# @app.get("/jobs")
+# def get_jobs():
+#     df_jobs = pd.read_sql("""
+#         SELECT id, title, description, skills
+#         FROM jobs
+#         WHERE is_active = 'active'
+#     """, con=engine)
+#     return df_jobs.to_dict(orient="records")
+
 @app.get("/predict")
 def recommend_jobs(user_id: int, top_k: int = 5):
     # Ambil skill user dari table skills
