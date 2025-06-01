@@ -7,3 +7,4 @@ tensorflow==2.11.0
 sqlalchemy
 pandas
 psycopg2-binary
+python-dotenv
