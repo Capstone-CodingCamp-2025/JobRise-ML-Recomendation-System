@@ -12,8 +12,8 @@ import os
 
 
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+# DATABASE_URL = os.getenv("DATABASE_URL")
+# engine = create_engine(DATABASE_URL)
 
 # Load model Word2Vec dan job vectors
 w2v_model = Word2Vec.load("w2v_skill.model")
@@ -50,6 +50,14 @@ def read_root():
 # API buat GET jobs
 @app.get("/jobs")
 def get_jobs():
+    SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+
+    headers = {
+        "apikey": SUPABASE_API_KEY,
+        "Authorization": f"Bearer {SUPABASE_API_KEY}"
+    }
+
     url = f"{SUPABASE_URL}/rest/v1/jobs?is_active=eq.active&select=id,title,description,skills"
     response = requests.get(url, headers=headers, timeout=5)
 
@@ -81,14 +89,6 @@ def recommend_jobs(user_id: int, top_k: int = 5):
     # """, con=engine)
 
     # user_skills = df_user_skills['name'].tolist()
-    
-    SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-
-    headers = {
-        "apikey": SUPABASE_API_KEY,
-        "Authorization": f"Bearer {SUPABASE_API_KEY}"
-    }
 
     # Example REST API URL → table skills
     url = f"{SUPABASE_URL}/rest/v1/skills?profileId=eq.{user_id}&select=name"
