@@ -6,6 +6,8 @@ from typing import List
 import numpy as np
 import tensorflow as tf
 from gensim.models import Word2Vec
+import os
+
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
