@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from gensim.models import Word2Vec
+import requests
 import os
 
 
@@ -60,13 +61,38 @@ def get_jobs():
 @app.get("/predict")
 def recommend_jobs(user_id: int, top_k: int = 5):
     # Ambil skill user dari table skills
-    df_user_skills = pd.read_sql(f"""
-        SELECT name
-        FROM skills
-        WHERE "profileId" = {user_id}
-    """, con=engine)
+    # df_user_skills = pd.read_sql(f"""
+    #     SELECT name
+    #     FROM skills
+    #     WHERE "profileId" = {user_id}
+    # """, con=engine)
 
-    user_skills = df_user_skills['name'].tolist()
+    # user_skills = df_user_skills['name'].tolist()
+    
+    SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+
+    headers = {
+        "apikey": SUPABASE_API_KEY,
+        "Authorization": f"Bearer {SUPABASE_API_KEY}"
+    }
+
+    # Example REST API URL → table skills
+    url = f"{SUPABASE_URL}/rest/v1/skills?profileId=eq.{user_id}&select=name"
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        return {
+            "user_id": user_id,
+            "user_skills": [],
+            "message": f"Failed to fetch skills from Supabase. Status: {response.status_code}, Error: {response.text}"
+        }
+
+    # Convert to DataFrame
+    df_user_skills = pd.DataFrame(response.json())
+
+    user_skills = df_user_skills['name'].tolist() if not df_user_skills.empty else []
 
     # Cek kalau user gak punya skill
     if not user_skills:
