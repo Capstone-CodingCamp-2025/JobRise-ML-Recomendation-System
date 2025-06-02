@@ -132,16 +132,6 @@ def recommend_jobs(user_id: int, top_k: int = 12):
             }
 
         user_vec = embed_text(user_skills)
-
-        # if not user_vec.any():
-        #     cur.close()
-        #     conn.close()
-        #     return {
-        #         "user_id": user_id,
-        #         "full_name": full_name,
-        #         "user_skills": user_skills,
-        #         "message": "Skill user tidak cocok dengan model."
-        #     }
         
         if np.all(user_vec == 0):
             similarities = np.zeros(len(job_vectors))
