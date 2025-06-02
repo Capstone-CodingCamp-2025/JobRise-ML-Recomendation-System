@@ -326,7 +326,7 @@ def recommend_jobs(user_id: int, top_k: int = 12):
         query_skills = """
             SELECT name
             FROM skills
-            WHERE profileId = %s
+            WHERE "profileId" = %s
         """
         cur.execute(query_skills, (profile_id,))
         skills_rows = cur.fetchall()
