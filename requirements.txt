@@ -3,7 +3,7 @@ uvicorn
 numpy==1.23.5
 scipy==1.10.1
 gensim==4.3.1
-tensorflow==2.11.0
+tensorflow==2.15.0
 sqlalchemy
 pandas
 psycopg2-binary
