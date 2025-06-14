@@ -196,3 +196,85 @@ def recommend_jobs(user_id: int, top_k: int = 12):
             "recommendations": [],
             "message": f"Exception during DB query: {str(e)}"
         }
+
+
+
+# For testing purposes
+# New Endpoint for Skill-Based Prediction
+@app.post("/predict_by_skills")
+def recommend_jobs_by_skills(skill_input: SkillInput):
+    try:
+        # Extract skills and top_k from the request
+        user_skills = skill_input.skills
+        top_k = skill_input.top_k
+
+        if not user_skills:
+            return {
+                "message": "No skills provided."
+            }
+
+        # Embed the user's skills to get the skill vector
+        user_vec = embed_text(user_skills)
+        
+        if np.all(user_vec == 0):
+            similarities = np.zeros(len(job_vectors))
+        else:
+            similarities = cosine_sim(user_vec, job_vectors)
+
+        # Get top-k most similar jobs
+        top_k_idx = similarities.argsort()[::-1][:top_k]
+
+        # Query active jobs from the database
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        query_jobs = """
+            SELECT id, title, company_name, company_logo, salary_min, salary_max, job_type, is_active
+            FROM jobs
+            WHERE is_active = 'active'
+        """
+        cur.execute(query_jobs)
+        rows_jobs = cur.fetchall()
+        columns_jobs = [desc[0] for desc in cur.description]
+
+        df_jobs = pd.DataFrame(rows_jobs, columns=columns_jobs)
+
+        # Build recommendations
+        recommendations = []
+        for idx in top_k_idx:
+            job_id = job_ids[idx]
+            job_row = df_jobs[df_jobs['id'] == job_id]
+
+            if job_row.empty:
+                continue  
+
+            job_row = job_row.iloc[0]
+            score = similarities[idx]
+
+            recommendations.append({
+                "id": int(job_row["id"]),
+                "title": job_row["title"],
+                "company_name": job_row["company_name"],
+                "company_logo": job_row["company_logo"],
+                "salary_min": job_row["salary_min"],
+                "salary_max": job_row["salary_max"],
+                "job_type": job_row["job_type"],
+                "is_active": job_row["is_active"],
+                "score": round(float(score), 3)
+            })
+
+        cur.close()
+        conn.close()
+
+        # Return JSON response
+        return {
+            "skills": user_skills,
+            "top_k": top_k,
+            "recommendations": recommendations,
+            "note": "Only jobs with is_active = 'active' are recommended."
+        }
+
+    except Exception as e:
+        return {
+            "message": f"Error during prediction: {str(e)}"
+        }
