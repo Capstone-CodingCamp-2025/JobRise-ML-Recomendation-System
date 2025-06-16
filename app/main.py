@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, KeyedVectors
 import psycopg2
 import os
 
@@ -19,7 +19,7 @@ load_dotenv(dotenv_path=os.path.join(ROOT_DIR, ".env"))
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
 # Load model dan data
-w2v_model = Word2Vec.load(os.path.join(MODEL_DIR, "w2v_skill.model"))
+w2v_model = KeyedVectors.load(os.path.join(MODEL_DIR, "w2v_vectors.kv"))
 job_vectors = np.load(os.path.join(MODEL_DIR, "job_vectors.npy"))
 job_ids = np.load(os.path.join(MODEL_DIR, "job_ids.npy")).tolist()
 
@@ -44,8 +44,8 @@ def embed_text(words: List[str]) -> np.ndarray:
     for w in words:
         tokens = w.lower().split()
         for token in tokens:
-            if token in w2v_model.wv:
-                vectors.append(w2v_model.wv[token])
+            if token in w2v_model:
+                vectors.append(w2v_model[token])
     if not vectors:
         return np.zeros(w2v_model.vector_size)
     return np.mean(vectors, axis=0)

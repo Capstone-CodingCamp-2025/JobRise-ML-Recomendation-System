@@ -3,7 +3,7 @@ import psycopg2
 import numpy as np
 import pandas as pd
 import os
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, KeyedVectors 
 
 # Setup path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -13,7 +13,7 @@ MODEL_DIR = os.path.join(ROOT_DIR, "app", "models")
 load_dotenv(dotenv_path=os.path.join(ROOT_DIR, ".env"))
 
 # Load W2V model
-w2v_model = Word2Vec.load(os.path.join(MODEL_DIR, "w2v_skill.model"))
+w2v_model = KeyedVectors.load(os.path.join(MODEL_DIR, "w2v_vectors.kv"))
 
 # Database connection
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -23,7 +23,7 @@ def get_db_connection():
     return conn
 
 def embed_text(words):
-    vectors = [w2v_model.wv[w] for w in words if w in w2v_model.wv]
+    vectors = [w2v_model[w] for w in words if w in w2v_model]
     if not vectors:
         return np.zeros(w2v_model.vector_size)
     return np.mean(vectors, axis=0)
