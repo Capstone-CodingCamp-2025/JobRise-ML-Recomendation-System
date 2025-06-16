@@ -40,7 +40,12 @@ class SkillInput(BaseModel):
 
 # Fungsi untuk embed skill
 def embed_text(words: List[str]) -> np.ndarray:
-    vectors = [w2v_model.wv[w] for w in words if w in w2v_model.wv]
+    vectors = []
+    for w in words:
+        tokens = w.lower().split()
+        for token in tokens:
+            if token in w2v_model.wv:
+                vectors.append(w2v_model.wv[token])
     if not vectors:
         return np.zeros(w2v_model.vector_size)
     return np.mean(vectors, axis=0)
