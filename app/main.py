@@ -15,7 +15,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Load .env from root
 load_dotenv(dotenv_path=os.path.join(ROOT_DIR, ".env"))
 
-# Path ke folder model
+# Path ke folder model   
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
 # Load model dan data
